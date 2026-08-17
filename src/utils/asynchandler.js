@@ -4,3 +4,5 @@ const asyncHandler = (requestfn)=>{
     
     }
 }
+
+export default asyncHandler ;

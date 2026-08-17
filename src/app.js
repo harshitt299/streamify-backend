@@ -15,7 +15,11 @@ app.use(cookieParser());  //--> to manipulate cookie or doing operation on cokie
 
 
 
+// routes 
 
+import userRouter from "./routes/user.routes.js"
+
+app.use("/api/v1/users/" , userRouter)
 
 
 
