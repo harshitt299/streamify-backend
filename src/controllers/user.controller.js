@@ -27,7 +27,11 @@ const {fullName,username,email , password}=req.body;
     }
 
     const avatarLocalPath =req.files?.avtar[0]?.path
-   const coverImageLocalPath =  req.files?.coverImage[0]?.path;
+   //const coverImageLocalPath =  req.files?.coverImage[0]?.path;
+    let coverImageLocalPath
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length >0) {
+        coverImageLocalPath = req.files.coverImage[0].path
+    }
 
    if (!avatarLocalPath) {
     throw new ApiError(400,"Avtar file is required")
@@ -39,17 +43,17 @@ const {fullName,username,email , password}=req.body;
    if (!avtar) {
     throw new ApiError(400,"Avtar file is required")
    }
-     const User = await User.create({
+     const newUser = await User.create({
         fullName,
         avtar : avtar.url,
         coverImage : coverImage?.url || "",
         email,
         password,
-        username: username.toLowercase()
+        username: username.toLowerCase()
 
     })
 
-    const createdUSer = await User.findById(username._id).select(
+    const createdUSer = await User.findById(newUser._id).select(
         "-password -refreshToken"
     )
 
@@ -57,7 +61,7 @@ const {fullName,username,email , password}=req.body;
         throw new ApiError(500, "Something went wrong while registering a user!")
     }
 
-    return res.Status(201).json(
+    return res.status(201).json(
         new ApiResponse(200 , createdUSer , "User registered successfully")
     )
 

@@ -29,7 +29,7 @@ const userSchema = new Schema (
             type:String,  // cloudinary url
             required : true, 
         },
-        coveredImage :{
+        coverImage :{
             type : String,  // cloudinary url
         }, 
         watchHistory : [
@@ -45,7 +45,7 @@ const userSchema = new Schema (
 
         refreshToken :{
             type : String,
-            required : true,
+            
         }
 
     }, {timestamps : true}
