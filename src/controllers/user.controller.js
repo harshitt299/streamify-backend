@@ -12,6 +12,11 @@ const generateAcceesTokenAndRefreshToken = async(userId)=>{
      const accessToken = user.generateAccessToken()
      const refreshToken =  user.generateRefreshToken()
 
+     user.refreshToken = refreshToken
+     await user.save({validateBeforeSave: false})
+
+     return {accessToken,refreshToken}
+
 
     } catch (error) {
         throw new ApiError(500,"Something went wrong while generating acces and refresh Token")
@@ -83,6 +88,9 @@ const {fullName,username,email , password}=req.body;
 
 
 
+
+
+
 const loginUser = asyncHandler(async(req,res)=>{
 
     const {username,email,password}=req.body;
@@ -102,6 +110,65 @@ const loginUser = asyncHandler(async(req,res)=>{
         throw new ApiError(401,"Invalid user credentials")
     };
 
-})
+     const {accessToken ,refreshToken} =  await generateAcceesTokenAndRefreshToken(user._id)
 
-export {registerUser} ;
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+    const options = {
+        httpOnly : true,
+        secure : true,
+    }
+
+    return res
+    .status(200)
+    .cookie("accessToken" , accessToken , options)
+    .cookie("refreshToken" , refreshToken, options)
+    .json(
+        new ApiResponse (200,
+            {
+                user: loggedInUser , accessToken, refreshToken
+            },
+            "User Logged in successfully"
+        )
+    )
+
+});
+
+
+
+
+
+
+
+const logoutUser = asyncHandler (async(req,res)=>{
+    
+   await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set : {
+                refreshToken : undefined
+            }
+        },
+        {
+            new : true
+        }
+    );
+    
+    const options = {
+        httpOnly : true,
+        secure : true,
+    }
+
+    return res
+    .status(200)
+    .clearCookie("accessToken" ,accessToken,options)
+    .clearCookie("refreshToken" ,refreshToken,options)
+    .json(new ApiResponse (200, "User logout successfully"))
+
+});
+
+
+
+
+
+export {registerUser , loginUser , logoutUser} ;
