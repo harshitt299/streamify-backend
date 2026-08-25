@@ -211,9 +211,202 @@ try {
     throw new ApiError(401 , error?.message || "Invalid refresh Token")
 }
 
+});
+
+
+
+
+const changeCurrentPassword = asyncHandler (async(req,res)=>{
+    const {oldPassword ,newPassword} = req.body;
+    const user = User.findById(req.user?._id);
+
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+    if (!isPasswordCorrect) {
+        throw new ApiError(400, "Invalid Password");
+    }
+
+    user.password = newPassword
+    await user.save({validateBeforeSave : false});
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200 , {} , "password changed successfully"))
+});
+
+
+const getCurrentUser = asyncHandler (async(req,res)=>{
+    return res
+    .status(200)
+    .json(200, req.user , "current user fetched successfully")
+});
+
+
+const updateAccountDetails = asyncHandler(async(req,res)=>{
+    const {fullName , email} = req.body;
+    if(!fullName || !email){
+        throw new ApiError (400 ,"All fields are required")
+    };
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set : {
+               email ,
+               fullName
+            }
+        },
+        {new : true}
+    ).select("-password");
+
+    return res
+    .status(200)
+    .json(new ApiResponse (200 ,user , "Account details updated"))
+
+});
+
+
+const updateUserAvtar = asyncHandler (async(req,res)=>{
+    const avtarLocalPath = req.file?.path;
+    if (!avtarLocalPath) {
+         throw new ApiError (400 ,"Avtar file missing")
+    }
+    const avatr = await uploadOnCloudinary(avtarLocalPath)
+
+    if(!avatr.url){
+        throw new ApiError (400 ,"Something went wrong while uploading avtar")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+             $set :{
+                avatr : avatr.url
+            },
+            
+        },
+        {new:true},
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiError(200, user , "Avtar updated successfully"))
+
+});
+
+const updateUserCoverImage = asyncHandler (async(req,res)=>{
+    const coverImageLocalPath = req.file?.path;
+    if (!coverImageLocalPath) {
+         throw new ApiError (400 ,"Cover Image file missing")
+    }
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    if(!coverImageLocalPath.url){
+        throw new ApiError (400 ,"Something went wrong while uploading avtar")
+    }
+
+   const user =  await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+             $set :{
+                coverImage : coverImage.url
+            },
+            
+        },
+        {new:true},
+    ).select("-password")
+
+     return res
+    .status(200)
+    .json(new ApiError(200, user , "Cover Image updated successfully"))
+
+
+}) 
+
+const getUserChannel =asyncHandler(async(req,res)=>{
+    const {username} = req.params;
+    if (!username?.trim()) {
+        throw new ApiError(400,"username is missing");
+    }
+
+    const channel = await User.aggregate([
+        {
+            $match : {
+                username : username?.toLowerCase()
+            }
+        },
+        {
+            // channel subscribers
+            $lookup : {
+                from : "subscriptions",
+                localField : "_id",
+                foreignField : "channel",
+                as : "subscribers"
+            }
+        },
+        { 
+            // channels u subscribed
+            $lookup : {
+                 from : "subscriptions",
+                localField : "_id",
+                foreignField : "subscriber",
+                as : "subscribedTo"
+            }
+        }, 
+        {
+            $addFields : {
+                subscribersCount : {
+                    $size : "$subscribers"
+                },
+                channelsSubscribedToCount : {
+                    $size : "$subscribedTo"
+                },
+                isSubscribed : {
+                    $cond : {
+                        if : {$in : [req.user?._id , "$subscribers.subscriber"]},
+                        then : true,
+                        else : false,
+                    }
+                }
+            }
+        },
+        {
+            $project : {
+                fullName : 1,
+                username : 1,
+                subscribersCount : 1,
+                channelsSubscribedToCount : 1,
+                 isSubscribed : 1,
+                 coverImage : 1,
+                 avtar : 1,
+                 email : 1,
+
+
+
+            }
+        }
+    ]);
+
+    console .log(channel);
+    if (!channel?.length) {
+        throw new ApiError(400, "channel does not exits")
+    }
+
+    return res 
+    .status(200)
+    .json(
+        new ApiResponse(200, channel[0],"User channel fetched successfully")
+    )
+
 })
 
-
-
-
-export {registerUser , loginUser , logoutUser , refreshAccessToken} ;
+export {registerUser ,
+    loginUser , 
+    logoutUser ,
+    refreshAccessToken ,
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvtar,
+    updateUserCoverImage,
+    } ;
